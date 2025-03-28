@@ -1,6 +1,7 @@
 import React from "react";
 import { Routes, Route } from "react-router-dom";
 import Home from "./page/Home";
+import Product from "./page/Product";
 import NavBar from "./components/Navbar";
 import Footer from "./components/Footer";
 import { assets } from "./assets/assets";
@@ -25,6 +26,8 @@ const App = () => {
           <Routes>
             <Route path="/" element={<Home />} />
             <Route path="/collection" element={<Compilation />} />
+            <Route path="/product/:productId" element={<Product />} />
+
           </Routes>
         </>
       </div>
