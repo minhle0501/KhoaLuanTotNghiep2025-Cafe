@@ -187,7 +187,7 @@ const Compilation = () => {
 
             <div className='flex-1'>
                 <div className='flex justify-between text-base sm:text-2xl mb-4'>
-                    <Label text1={'ALL'} text2={'COLECTIONS'} />
+                    <Label text1={'ALL'} text2={'COMPILATIONS'} />
                     <select
                         onChange={(e) => setSortType(e.target.value)}
                         className='border-2 border-gray-300 text-sm px-2 rounded-[15px]'
