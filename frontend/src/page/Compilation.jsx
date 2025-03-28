@@ -1,8 +1,8 @@
 import React, { useContext, useEffect, useState } from 'react';
 import { ShopContext } from '../context/ShopContext';
 import { assets } from '../assets/assets';
-import Label from './Label';
-import MerchandiseItems from './MerchandiseItems';
+import MerchandiseItems from '../components/MerchandiseItems';
+import Label from '../components/Label';
 
 const Compilation = () => {
     const { products, search, showSearch } = useContext(ShopContext);
