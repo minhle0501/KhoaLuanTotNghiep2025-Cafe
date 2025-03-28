@@ -21,7 +21,6 @@ const Compilation = () => {
             setCategory((prev) => [...prev, e.target.value]);
         }
     };
-
     const toggleSubCategory = (e) => {
         if (subCategory.includes(e.target.value)) {
             setSubCategory((prev) =>
