@@ -1,48 +1,43 @@
-import { useEffect, useState } from "react";
+import React from "react";
+import { Routes, Route } from "react-router-dom";
+import Home from "./page/Home";
+import NavBar from "./components/Navbar";
+import Footer from "./components/Footer";
+import { assets } from "./assets/assets";
+import SearchBar from "./components/SearchBar";
 
-function App() {
-  const [time, setTime] = useState(0);
-  const [running, setRunning] = useState(false);
+export const backendUrl = import.meta.env.VITE_BACKEND_URL
 
-  useEffect(() => {
-    let interval;
-
-    if (running) {
-      interval = setInterval(() => {
-        setTime((prevTime) => prevTime + 10);
-      }, 10);
-    }
-
-    return () => {
-      if (interval) clearInterval(interval);
-    };
-  }, [running]);
-
+//nơi chứa các components chính và định tuyến router
+const App = () => {
   return (
-    <>
-      <h1>01-Stopwatch</h1>
-      <div>
-        <span>{("0" + Math.floor((time / 60000) % 60)).slice(-2)}:</span>
-        <span>{("0" + Math.floor((time / 1000) % 60)).slice(-2)}:</span>
-        <span>{("0" + ((time / 10) % 100)).slice(-2)}</span>
+    <div>
+      <div className="px-4 sm:px-[5vw] md:px-[7vw] lg:px-[9vw]"
+        style={{
+          background: `linear-gradient(rgba(0, 0, 0, 0.450), rgba(0, 0, 0, 0.500)), url(${assets.a_cup})`,
+          backgroundSize: 'cover',
+          backgroundPosition: 'center center',
+        }}>
+        <NavBar />
+        <SearchBar />
+        <>
+          <Routes>
+            <Route path="/" element={<Home />} />
+          </Routes>
+        </>
       </div>
-      <div>
-        {running ? (
-          <button onClick={() => setRunning(false)}>Stop</button>
-        ) : (
-          <button onClick={() => setRunning(true)}>Start</button>
-        )}
-        <button
-          onClick={() => {
-            setTime(0);
-            setRunning(false);
-          }}
-        >
-          Reset
-        </button>
+
+      <div className="px-4 sm:px-[5vw] md:px-[7vw] lg:px-[9vw]">
+        <Footer />
       </div>
-    </>
+    </div>
   );
 }
 
 export default App;
+
+
+
+
+
+
