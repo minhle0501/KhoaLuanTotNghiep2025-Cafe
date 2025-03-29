@@ -4,48 +4,49 @@ import axios from 'axios';
 import { toast } from 'react-toastify';
 
 const Login = () => {
-    const [currentState, setCurrentState] = useState('Dang Ky');
+    const [currentState, setCurrentState] = useState('Login');
     const { token, setToken, navigate, backendUrl } = useContext(ShopContext);
 
     const [name, setName] = useState('');
     const [password, setPassword] = useState('');
     const [email, setEmail] = useState('');
-    const onSubmitHandler = async (event) => {
+
+    const onSubmitHandler = (event) => {
         event.preventDefault();
-        try {
-            if (currentState === 'Dang Ky') {
-                const response = await axios.post(
-                    backendUrl + '/api/user/Dang Ky',
-                    { name, email, password }
-                );
-                if (response.data.success) {
-                    alert("Đăng ký thành công!");
-                } else {
-                    toast.error(response.data.message);
-                }
-            } else {
-                const response = await axios.post(
-                    backendUrl + '/api/user/Dang Nhap',
-                    { email, password }
-                );
-                if (response.data.success) {
-                    setToken(response.data.token);
-                    localStorage.setItem('token', response.data.token);
-                } else {
-                    toast.error(response.data.message);
-                }
-            }
-        } catch (error) {
-            console.log(error);
-            toast.error(error)
+
+        let url = backendUrl + '/api/user/';
+        let data = { email, password };
+        
+        if (currentState === 'Sign Up') {
+            url += 'register';
+            data.name = name;
+        } else {
+            url += 'login';
         }
+
+        axios.post(url, data)
+            .then(response => {
+                if (response.data.success) {
+                    if (currentState === 'Login') {
+                        setToken(response.data.token);
+                        localStorage.setItem('token', response.data.token);
+                    }
+                } else {
+                    toast.error(response.data.message);
+                }
+            })
+            .catch(error => {
+                console.log(error);
+                toast.error(error.message || 'An error occurred');
+            });
     };
 
     useEffect(() => {
-        if(token) {
-            navigate('/')
+        if (token) {
+            navigate('/');
         }
-    },[token])
+    }, [token]);
+
     return (
         <form
             onSubmit={onSubmitHandler}
@@ -55,7 +56,7 @@ const Login = () => {
                 <p className='prata-regular text-3xl'>{currentState}</p>
                 <hr className='border-none h-[1.5px] w-8 bg-gray-800' />
             </div>
-            {currentState === 'Dang Nhap' ? (
+            {currentState === 'Login' ? (
                 ''
             ) : (
                 <input
@@ -63,7 +64,7 @@ const Login = () => {
                     value={name}
                     type='text'
                     className='w-full px-3 py-2 border border-gray-800'
-                    placeholder='Ten'
+                    placeholder='Name'
                     required
                 />
             )}
@@ -80,32 +81,32 @@ const Login = () => {
                 value={password}
                 type='password'
                 className='w-full px-3 py-2 border border-gray-800'
-                placeholder='Mat khau'
+                placeholder='Password'
                 required
             />
             <div className='w-full flex justify-between text-sm mt-[8px]'>
-                <p className='cursor-pointer'>Quen mat khau?</p>
-                {currentState === 'Dang Nhap' ? (
+                <p className='cursor-pointer'>Forgot your password</p>
+                {currentState === 'Login' ? (
                     <p
-                        onClick={() => setCurrentState('Dang Ky')}
+                        onClick={() => setCurrentState('Sign Up')}
                         className='cursor-pointer'
                     >
-                        Tao tai khoan 
+                        Create account
                     </p>
                 ) : (
                     <p
-                        onClick={() => setCurrentState('Dang Nhap')}
+                        onClick={() => setCurrentState('Login')}
                         className='cursor-pointer'
                     >
-                        Dang nhap tai day
+                        Login Here
                     </p>
                 )}
             </div>
             <button className='bg-black text-white font-light px-8 py-2 mt-4 w-full h-[50px]'>
-                {currentState === 'Dang Nhap' ? 'Dang Ky' : 'Xac Nhan'}
+                {currentState === 'Login' ? 'Sign In' : 'Sign Up'}
             </button>
         </form>
     );
 };
 
-export default Login ;
+export default Login;

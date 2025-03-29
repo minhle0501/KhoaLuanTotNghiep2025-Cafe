@@ -6,7 +6,7 @@ import NavBar from "./components/Navbar";
 import Footer from "./components/Footer";
 import { assets } from "./assets/assets";
 import SearchBar from "./components/SearchBar";
-import Compilation from "./components/Compilation";
+import Compilation from "./page/Compilation";
 import Login from "./page/Login";
 
 export const backendUrl = import.meta.env.VITE_BACKEND_URL
@@ -26,9 +26,10 @@ const App = () => {
         <>
           <Routes>
             <Route path="/" element={<Home />} />
-            <Route path="/collection" element={<Compilation />} />
+            <Route path="/compilation" element={<Compilation/>} />
             <Route path="/product/:productId" element={<Product />} />
-            <Route path="login" element={<Login />} />
+            <Route path="/login" element={<Login />} />
+          
            
 
           </Routes>

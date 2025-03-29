@@ -5,6 +5,7 @@ import BestChoice from '../components/BestChoice'
 import OurRules from '../components/OurRules'
 import SubsBox from '../components/SubsBox'
 
+
 const Home = () => {
   return (
     <div>
