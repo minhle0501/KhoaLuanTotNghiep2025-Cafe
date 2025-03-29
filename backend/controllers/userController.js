@@ -1,76 +1,71 @@
 import userModel from "../models/userModel.js";
-import validator from "validator"
-import jwt from "jsonwebtoken"
-import bcrypt from 'bcrypt'
+import validator from "validator";
+import jwt from "jsonwebtoken";
+import bcrypt from 'bcrypt';
 
 const createToken = (id) => {
-    return jwt.sign({ id }, process.env.JWT_SECRET)
-}
+    return jwt.sign({ id }, process.env.JWT_SECRET);
+};
 
-const registerUser = async (req, res) => {
-    try {
-        const { name, email, password } = req.body;
+// Đăng ký người dùng
+const registerUser = (req, res) => {
+    const { name, email, password } = req.body;
 
-        const exists = await userModel.findOne({ email })
-        if (exists) {
-            return res.json({ success: false, message: "User already exists" })
-        }
+    userModel.findOne({ email })
+        .then(exists => {
+            if (exists) {
+                return res.json({ success: false, message: "User already exists" });
+            }
 
-        if (!validator.isEmail(email)) {
-            return res.json({ success: false, message: "Please enter a valid email" })
-        }
+            if (!validator.isEmail(email)) {
+                return res.json({ success: false, message: "Please enter a valid email" });
+            }
 
-        if (password.length < 8) {
-            return res.json({ success: false, message: "Please enter a strong password" })
-        }
+            if (password.length < 8) {
+                return res.json({ success: false, message: "Please enter a strong password" });
+            }
 
-        const salt = await bcrypt.genSalt(10)
-        const hashedPassword = await bcrypt.hash(password, salt)
-
-        const newUser = new userModel({
-            name,
-            email,
-            password: hashedPassword
+            return bcrypt.genSalt(10);
         })
+        .then(salt => bcrypt.hash(password, salt))
+        .then(hashedPassword => {
+            const newUser = new userModel({ name, email, password: hashedPassword });
+            return newUser.save();
+        })
+        .then(user => {
+            const token = createToken(user._id);
+            res.json({ success: true, token });
+        })
+        .catch(err => {
+            console.error(err);
+            res.json({ success: false, message: err.message });
+        });
+};
 
-        const user = await newUser.save()
+// Đăng nhập người dùng
+const loginUser = (req, res) => {
+    const { email, password } = req.body;
 
-        const token = createToken(user._id)
+    userModel.findOne({ email })
+        .then(user => {
+            if (!user) {
+                return res.json({ success: false, message: "User doesn't exist" });
+            }
 
-        res.json({ success: true, token })
+            return bcrypt.compare(password, user.password)
+                .then(isMatch => {
+                    if (isMatch) {
+                        const token = createToken(user._id);
+                        res.json({ success: true, token });
+                    } else {
+                        res.json({ success: false, message: "Invalid credentials" });
+                    }
+                });
+        })
+        .catch(err => {
+            console.error(err);
+            res.json({ success: false, message: err.message });
+        });
+};
 
-    } catch (err) {
-        console.error(err);
-        res.json({ success: false, message: err.message })
-    }
-}
-
-
-const loginUser = async (req, res) => {
-    try {
-        const { email, password } = req.body;
-
-        const user = await userModel.findOne({ email });
-
-        if (!user) {
-            return res.json({ success: false, message: "User doesn't exists" })
-        }
-
-        const isMatch = await bcrypt.compare(password, user.password);
-
-        if (isMatch) {
-            const token = createToken(user._id)
-            res.json({ success: true, token })
-        }
-        else {
-            res.json({ success: false, message: "Invalid credentials" })
-        }
-
-    } catch (err) {
-        console.error(err);
-        res.json({ success: false, message: err.message })
-    }
-}
-
-
-export { loginUser, registerUser }
+export { loginUser, registerUser };

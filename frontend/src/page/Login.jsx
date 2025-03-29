@@ -16,7 +16,7 @@ const Login = () => {
 
         let url = backendUrl + '/api/user/';
         let data = { email, password };
-        
+
         if (currentState === 'Sign Up') {
             url += 'register';
             data.name = name;
