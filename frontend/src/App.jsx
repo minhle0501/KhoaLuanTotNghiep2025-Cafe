@@ -8,6 +8,9 @@ import { assets } from "./assets/assets";
 import SearchBar from "./components/SearchBar";
 import Compilation from "./page/Compilation";
 
+import Login from "./page/Login";
+
+
 export const backendUrl = import.meta.env.VITE_BACKEND_URL
 
 //nơi chứa các components chính và định tuyến router
@@ -25,8 +28,13 @@ const App = () => {
         <>
           <Routes>
             <Route path="/" element={<Home />} />
-            <Route path="/compilation" element={<Compilation />} />
+
+            <Route path="/compilation" element={<Compilation/>} />
+
             <Route path="/product/:productId" element={<Product />} />
+            <Route path="/login" element={<Login />} />
+          
+           
 
           </Routes>
         </>
