@@ -1,170 +1,163 @@
 import userModel from "../models/userModel.js";
 import validator from "validator";
 import jwt from "jsonwebtoken";
-import bcrypt from 'bcrypt';
+import bcrypt from "bcrypt";
 import nodemailer from "nodemailer";
 import crypto from "crypto";
 
 // Tạo token JWT
 const createToken = (id) => {
-    return jwt.sign({ id }, process.env.JWT_SECRET);
+    return jwt.sign({ id }, process.env.JWT_SECRET, { expiresIn: "7d" });
 };
 
 // Đăng ký người dùng
-const registerUser = (req, res) => {
-    const { name, email, password } = req.body;
+const registerUser = async (req, res) => {
+    try {
+        const { name, email, password } = req.body;
 
-    userModel.findOne({ email })
-        .then(exists => {
-            if (exists) {
-                return res.json({ success: false, message: "User already exists" });
-            }
+        // Kiểm tra email hợp lệ
+        if (!validator.isEmail(email)) {
+            return res.status(400).json({ success: false, message: "Please enter a valid email" });
+        }
 
-            if (!validator.isEmail(email)) {
-                return res.json({ success: false, message: "Please enter a valid email" });
-            }
+        // Kiểm tra password đủ mạnh
+        if (!password || password.length < 3) {
+            return res.status(400).json({ success: false, message: "Password must be at least 8 characters long" });
+        }
 
-            if (password.length < 8) {
-                return res.json({ success: false, message: "Please enter a strong password" });
-            }
+        // Kiểm tra xem email đã tồn tại chưa
+        const exists = await userModel.findOne({ email });
+        if (exists) {
+            return res.status(400).json({ success: false, message: "User already exists" });
+        }
 
-            // Tạo salt và băm mật khẩu
-            return bcrypt.genSalt(10);
-        })
-        .then(salt => bcrypt.hash(password, salt))  // Băm mật khẩu
-        .then(hashedPassword => {
-            const newUser = new userModel({ name, email, password: hashedPassword });
-            return newUser.save();  // Lưu người dùng vào cơ sở dữ liệu
-        })
-        .then(user => {
-            const token = createToken(user._id);  // Tạo token cho người dùng
-            res.json({ success: true, token });  // Trả về token
-        })
-        .catch(err => {
-            console.error(err);
-            res.json({ success: false, message: err.message });  // Xử lý lỗi
-        });
+        // Băm mật khẩu
+        const salt = await bcrypt.genSalt(10);
+        const hashedPassword = await bcrypt.hash(password, salt);
+
+        // Tạo người dùng mới
+        const newUser = new userModel({ name, email, password: hashedPassword });
+        await newUser.save();
+
+        // Tạo token và gửi phản hồi
+        const token = createToken(newUser._id);
+        return res.status(201).json({ success: true, token });
+
+    } catch (error) {
+        console.error(error);
+        return res.status(500).json({ success: false, message: "Server error" });
+    }
 };
 
 // Đăng nhập người dùng
-const loginUser = (req, res) => {
-    const { email, password } = req.body;
+const loginUser = async (req, res) => {
+    try {
+        const { email, password } = req.body;
 
-    userModel.findOne({ email })
-        .then(user => {
-            if (!user) {
-                return res.json({ success: false, message: "User doesn't exist" });
-            }
+        // Kiểm tra email hợp lệ
+        if (!validator.isEmail(email)) {
+            return res.status(400).json({ success: false, message: "Invalid email format" });
+        }
 
-            return bcrypt.compare(password, user.password)  // Kiểm tra mật khẩu
-                .then(isMatch => {
-                    if (isMatch) {
-                        const token = createToken(user._id);
-                        res.json({ success: true, token });  // Trả về token nếu mật khẩu đúng
-                    } else {
-                        res.json({ success: false, message: "Invalid credentials" });  // Mật khẩu sai
-                    }
-                });
-        })
-        .catch(err => {
-            console.error(err);
-            res.json({ success: false, message: err.message });
-        });
+        const user = await userModel.findOne({ email });
+        if (!user) {
+            return res.status(404).json({ success: false, message: "User doesn't exist" });
+        }
+
+        // So sánh mật khẩu
+        const isMatch = await bcrypt.compare(password, user.password);
+        if (!isMatch) {
+            return res.status(400).json({ success: false, message: "Invalid credentials" });
+        }
+
+        // Tạo token
+        const token = createToken(user._id);
+        return res.status(200).json({ success: true, token });
+
+    } catch (error) {
+        console.error(error);
+        return res.status(500).json({ success: false, message: "Server error" });
+    }
 };
 
-// Cấu hình transporter cho nodemailer (sử dụng Gmail SMTP trong ví dụ này)
+// Cấu hình transporter cho nodemailer
 const transporter = nodemailer.createTransport({
-    service: 'gmail',
+    service: "gmail",
     auth: {
         user: process.env.GMAIL_USER,
         pass: process.env.GMAIL_PASSWORD
     }
 });
 
-const forgotPassword = (req, res) => {
-    const { email } = req.body;
+// Quên mật khẩu
+const forgotPassword = async (req, res) => {
+    try {
+        const { email } = req.body;
 
-    // Kiểm tra email hợp lệ
-    if (!validator.isEmail(email)) {
-        return res.json({ success: false, message: "Please enter a valid email" });
+        if (!validator.isEmail(email)) {
+            return res.status(400).json({ success: false, message: "Please enter a valid email" });
+        }
+
+        const user = await userModel.findOne({ email });
+        if (!user) {
+            return res.status(404).json({ success: false, message: "User not found" });
+        }
+
+        // Tạo token reset mật khẩu
+        const resetToken = crypto.randomBytes(32).toString("hex");
+        user.resetPasswordToken = resetToken;
+        user.resetPasswordExpires = Date.now() + 3600000; // 1 giờ hết hạn
+        await user.save();
+
+        // Gửi email
+        const resetUrl = `${process.env.FRONTEND_URL}/reset-password?token=${resetToken}`;
+        const mailOptions = {
+            to: email,
+            from: process.env.GMAIL_USER,
+            subject: "Password Reset Request",
+            text: `Click the link to reset your password: ${resetUrl}`
+        };
+
+        await transporter.sendMail(mailOptions);
+        return res.status(200).json({ success: true, message: "Password reset link sent to your email" });
+
+    } catch (error) {
+        console.error(error);
+        return res.status(500).json({ success: false, message: "Server error" });
     }
-
-    // Tìm người dùng
-    userModel.findOne({ email })
-        .then((user) => {
-            if (!user) {
-                return res.json({ success: false, message: "User not found" });
-            }
-
-            // Tạo mã reset mật khẩu (token)
-            const resetToken = crypto.randomBytes(32).toString("hex");
-            user.resetPasswordToken = resetToken;
-            user.resetPasswordExpires = Date.now() + 3600000; // 1 giờ hết hạn
-
-            return user.save();
-        })
-        .then((user) => {
-            // Tạo URL reset mật khẩu
-            const resetUrl = `${process.env.FRONTEND_URL}/reset-password?token=${user.resetPasswordToken}`;
-
-            // Gửi email với link reset mật khẩu
-            const mailOptions = {
-                to: email,
-                from: process.env.GMAIL_USER,
-                subject: "Password Reset Request",
-                text: `You have requested to reset your password. Please click the following link to reset your password: ${resetUrl}`
-            };
-
-            transporter.sendMail(mailOptions, (error, info) => {
-                if (error) {
-                    // Nếu có lỗi trong khi gửi email, tránh gửi phản hồi lại lần nữa
-                    return res.status(500).json({ success: false, message: "Error sending email" });
-                }
-                return res.json({ success: true, message: "Password reset link sent to your email" });
-            });
-        })
-        .catch((err) => {
-            // Kiểm tra lỗi bất đồng bộ và chỉ gửi một lần phản hồi
-            console.error(err);
-            if (!res.headersSent) {  // Kiểm tra xem có phản hồi chưa
-                return res.status(500).json({ success: false, message: err.message });
-            }
-        });
 };
 
-// Reset password
-const resetPassword = (req, res) => {
-    const { token, newPassword } = req.body;
+// Đặt lại mật khẩu
+const resetPassword = async (req, res) => {
+    try {
+        const { token, newPassword } = req.body;
 
-    userModel.findOne({ resetPasswordToken: token, resetPasswordExpires: { $gt: Date.now() } })
-        .then((user) => {
-            if (!user) {
-                return res.json({ success: false, message: "Invalid or expired reset token" });
-            }
-
-            return bcrypt.genSalt(10);  // Tạo salt cho mật khẩu mới
-        })
-        .then((salt) => {
-            return bcrypt.hash(newPassword, salt);  // Băm mật khẩu mới
-        })
-        .then((hashedPassword) => {
-            return userModel.findOneAndUpdate(
-                { resetPasswordToken: token },
-                {
-                    password: hashedPassword,
-                    resetPasswordToken: undefined, // Xóa token reset
-                    resetPasswordExpires: undefined // Xóa thời gian hết hạn
-                },
-                { new: true }
-            );
-        })
-        .then(() => {
-            return res.json({ success: true, message: "Password updated successfully" });
-        })
-        .catch((err) => {
-            console.error(err);
-            return res.json({ success: false, message: err.message });
+        // Kiểm tra token hợp lệ
+        const user = await userModel.findOne({
+            resetPasswordToken: token,
+            resetPasswordExpires: { $gt: Date.now() }
         });
+
+        if (!user) {
+            return res.status(400).json({ success: false, message: "Invalid or expired reset token" });
+        }
+
+        // Băm mật khẩu mới
+        const salt = await bcrypt.genSalt(10);
+        const hashedPassword = await bcrypt.hash(newPassword, salt);
+
+        // Cập nhật mật khẩu mới
+        user.password = hashedPassword;
+        user.resetPasswordToken = undefined;
+        user.resetPasswordExpires = undefined;
+        await user.save();
+
+        return res.status(200).json({ success: true, message: "Password updated successfully" });
+
+    } catch (error) {
+        console.error(error);
+        return res.status(500).json({ success: false, message: "Server error" });
+    }
 };
 
 export { loginUser, registerUser, forgotPassword, resetPassword };
